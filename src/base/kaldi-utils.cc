@@ -18,6 +18,17 @@
 
 #include "base/kaldi-utils.h"
 
+#ifdef _WIN32_WINNT_WIN8
+#include <Synchapi.h>
+#elif defined(_WIN32) || defined(_MSC_VER) || defined(MINGW)
+#include <windows.h>
+#if defined(_MSC_VER) && _MSC_VER < 1900
+#define snprintf _snprintf
+#endif /* _MSC_VER < 1900 */
+#else
+#include <unistd.h>
+#endif
+
 #include <chrono>
 #include <cstdio>
 #include <thread>
