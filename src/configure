@@ -81,10 +81,11 @@ Configuration options:
   --fst-root=DIR        OpenFst root directory [default=../tools/openfst/]
   --fst-version=STR     OpenFst version string
   --mathlib=LIB         Math library [default=MKL|OPENBLAS, based on platform]
-                        Supported libraries: ATLAS, MKL, CLAPACK, OPENBLAS.
+                        Supported libraries: ATLAS, MKL, CLAPACK, OPENBLAS, OPENBLAS_CLAPACK.
   --static-math         Build with static math libraries [default=no]
   --atlas-root=DIR      ATLAS root directory [default=../tools/ATLAS/]
   --openblas-root=DIR   OpenBLAS root directory
+  --openblas-clapack-root=DIR   OpenBLAS CLAPCK root directory
   --clapack-root=DIR    CLAPACK root directory
   --mkl-root=DIR        MKL root directory
   --mkl-libdir=DIR      MKL library directory
@@ -232,7 +233,7 @@ You need $supported_compiler."
 
 function check_for_slow_expf {
   # We cannot run this test if we are cross compiling.
-  if [[ "$TARGET_ARCH" == "`uname -m`" ]] ; then
+  if [[ -z "$HOST" ]] ; then
     ( cd probe
       rm -f exp-test
       make -f Makefile.slow_expf 1>/dev/null
@@ -581,6 +582,7 @@ MATHLIB=
 MKLLIBDIR=
 MKLROOT=
 OPENBLASROOT=
+OPENBLASCLAPACKROOT=
 
 # This variable identifies the type of system where built programs and
 # libraries will run. It is set by the configure script when cross compiling.
@@ -711,6 +713,9 @@ do
     shift ;;
   --openblas-root=*)
     GetSwitchExistingPathOrDie OPENBLASROOT "$1"
+    shift ;;
+  --openblas-clapack-root=*)
+    GetSwitchExistingPathOrDie OPENBLASCLAPACKROOT "$1"
     shift ;;
   --mkl-root=*)
     GetSwitchExistingPathOrDie MKLROOT "$1"
@@ -858,6 +863,7 @@ esac
 [[ $MKLLIBDIR || $MKLROOT ]] && { mathlibs+=(mkl); auto_lib=MKL; }
 [[ $CLAPACKROOT  ]] && { mathlibs+=(clapack); auto_lib=CLAPACK; }
 [[ $OPENBLASROOT ]] && { mathlibs+=(openblas); auto_lib=OPENBLAS; }
+[[ $OPENBLASLAPACKROOT ]] && { mathlibs+=(openblas_clapack); auto_lib=OPENBLAS_CLAPACK; }
 [[ $ATLASROOT    ]] && { mathlibs+=(atlas); auto_lib=ATLAS; }
 
 # When --mathlib= is explicitly provided, and some mathlib(s) deduced, but
@@ -1043,23 +1049,23 @@ if $android ; then
 
 elif $mingw ; then
 
-  OPENBLASROOT=`rel2abs "$OPENBLASROOT"`
-  if [ -z "$OPENBLASROOT" ]; then
-    failure "The location of OPENBLAS must be specified for android builds
+  OPENBLASROOT=`rel2abs "$OPENBLASCLAPACKROOT"`
+  if [ -z "$OPENBLASCLAPACKROOT" ]; then
+    failure "The location of OPENBLAS must be specified for mingw builds
              using --openblas-root (and it must exist)"
   fi
-  if [ ! -f $OPENBLASROOT/lib/libopenblas.a ]; then
-    failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.a"
+  if [ ! -f $OPENBLASCLAPACKROOT/lib/libopenblas.a ]; then
+    failure "Expected to find the file $OPENBLASCLAPACKROOT/lib/libopenblas.a"
   fi
   echo "Using OpenBLAS as the linear algebra library."
 
-  OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a"
-  echo "OPENBLASINC = $OPENBLASROOT/include" >> kaldi.mk
+  OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a $OPENBLASROOT/lib/liblapack.a $OPENBLASROOT/lib/libblas.a $OPENBLASROOT/lib/libf2c.a"
+  echo "OPENBLASINC = $OPENBLASCLAPACKROOT/include" >> kaldi.mk
   echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
 
   cat makefiles/mingw.mk >> kaldi.mk
 
-  echo "Successfully configured for MinGW with OpenBLAS from $OPENBLASROOT."
+  echo "Successfully configured for MinGW with OpenBLAS CLAPACK from $OPENBLASCLAPACKROOT."
 
 elif $ios ; then
 
@@ -1342,13 +1348,13 @@ or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
 
     echo "Successfully configured for Linux with OpenBLAS from $OPENBLASROOT"
   elif [ "$MATHLIB" == "OPENBLAS_CLAPACK" ]; then
-    if [[ ! $OPENBLASROOT ]]; then
+    if [[ ! $OPENBLASCLAPACKROOT ]]; then
       # Either the user specified --mathlib=OPENBLAS or we've autodetected the
       # system where OpenBLAS is the preferred option (the parser for
       # --openblas-root fails fatally if the path does not exist, so we trust
       # that if set, the variable contains the existing path, converted to
       # absolute form).
-      OPENBLASROOT="$(rel2abs ../tools/OpenBLAS/install)" ||
+      OPENBLASCLAPACKROOT="$(rel2abs ../tools/OpenBLAS/install)" ||
         Die "OpenBLAS not found in '../tools/OpenBLAS/install'.
 ** This is the only place we look for it. The best option is to build OpenBLAS
 ** tuned for your system and CPU. To do that, run the following commands:
@@ -1363,28 +1369,28 @@ or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
 ** You can also use other matrix algebra libraries. For information, see:
 **   http://kaldi-asr.org/doc/matrixwrap.html"
     fi
-    if [ -f $OPENBLASROOT/lib/libopenblas.so ]; then
-      OPENBLASLIBDIR=$OPENBLASROOT/lib
-    elif [ -f $OPENBLASROOT/lib64/libopenblas.so ]; then
+    if [ -f $OPENBLASCLAPACKROOT/lib/libopenblas.so ]; then
+      OPENBLASLIBDIR=$OPENBLASCLAPACKROOT/lib
+    elif [ -f $OPENBLASCLAPACKROOT/lib64/libopenblas.so ]; then
       # in REDHAT/CentOS package installs, the library is located here
-      OPENBLASLIBDIR=$OPENBLASROOT/lib64
+      OPENBLASLIBDIR=$OPENBLASCLAPACKROOT/lib64
     else
-      failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.so"
+      failure "Expected to find the file $OPENBLASCLAPACKROOT/lib/libopenblas.so"
     fi
-    if [ -f $OPENBLASROOT/include/cblas.h ] ; then
-      OPENBLASINCDIR=$OPENBLASROOT/include
-    elif [ -f $OPENBLASROOT/include/openblas/cblas.h ] ; then
+    if [ -f $OPENBLASCLAPACKROOT/include/cblas.h ] ; then
+      OPENBLASINCDIR=$OPENBLASCLAPACKROOT/include
+    elif [ -f $OPENBLASCLAPACKROOT/include/openblas/cblas.h ] ; then
       # in REDHAT/CentOS/Ubuntu package installs, the includes are located here
-      OPENBLASINCDIR=$OPENBLASROOT/include/openblas
+      OPENBLASINCDIR=$OPENBLASCLAPACKROOT/include/openblas
     else
-      echo "$0: ***** Using OpenBLAS from $OPENBLASROOT but cblas.h is not found. "
+      echo "$0: ***** Using OpenBLAS from $OPENBLASCLAPACKROOT but cblas.h is not found. "
       echo "** Assuming openblas is aleady in a default include path, but"
       echo "** if you get compilation messages about not finding files like cblas.h,"
       echo "** you should look into this (e.g. make sure to install the 'openblas-dev' package,"
       echo "** if it is a package-based install)."
       OPENBLASINCDIR="/usr/include"
     fi
-    echo "Your math library seems to be OpenBLAS from $OPENBLASROOT.  Configuring appropriately."
+    echo "Your math library seems to be OpenBLAS from $OPENBLASCLAPACKROOT.  Configuring appropriately."
     OPENBLASLIBS="-L$OPENBLASLIBDIR -l:libopenblas.a -l:libblas.a -l:liblapack.a -l:libf2c.a"
     echo "OPENBLASINC = $OPENBLASINCDIR" >> kaldi.mk
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
@@ -1399,7 +1405,7 @@ or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
     echo >> kaldi.mk
     echo "CXXFLAGS += -DUSE_KALDI_SVD" >> kaldi.mk
 
-    echo "Successfully configured for Linux with OpenBLAS from $OPENBLASROOT"
+    echo "Successfully configured for Linux with OpenBLAS from $OPENBLASCLAPACKROOT"
   else
     failure "Unsupported linear algebra library '$MATHLIB'"
   fi

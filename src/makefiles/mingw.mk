@@ -18,17 +18,17 @@ endif
 
 MINGW=true
 
-CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
+CXXFLAGS = -std=c++17 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
            -Wno-deprecated-declarations -Winit-self -Wno-mismatched-tags \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_CXXABI_H -DHAVE_OPENBLAS \
-           -I$(OPENBLASINC) -pthread \
-           -g # -O0 -DKALDI_PARANOID
+           -I$(OPENBLASINC) \
+           -g -O3 # -DKALDI_PARANOID
 
 ifeq ($(KALDI_FLAVOR), dynamic)
 CXXFLAGS += -fPIC
 endif
 
-LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -L/home/shmyrev/android/kaldi-win/mingw64_dll
-LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(OPENBLASLIBS) -lm -lgcc_s_seh-1 -lgfortran-3 -lquadmath-0
+LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS)
+LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(OPENBLASLIBS) -lm
