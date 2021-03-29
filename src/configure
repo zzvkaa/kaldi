@@ -1038,7 +1038,7 @@ if $android ; then
   fi
   echo "Using OpenBLAS as the linear algebra library."
 
-  OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a $OPENBLASROOT/lib/libclapack.a $OPENBLASROOT/lib/liblapack.a $OPENBLASROOT/lib/libblas.a $OPENBLASROOT/lib/libf2c.a"
+  OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a $OPENBLASROOT/lib/liblapack.a $OPENBLASROOT/lib/libblas.a $OPENBLASROOT/lib/libf2c.a"
   echo "OPENBLASINC = $OPENBLASROOT/include" >> kaldi.mk
   echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
   echo "ANDROIDINC = $ANDROIDINC" >> kaldi.mk
